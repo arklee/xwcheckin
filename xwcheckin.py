@@ -165,7 +165,7 @@ def run_background(lng, lat):
     else:
         print("未找到schedule.txt，将生成默认时间表文件。请自行修改并重新运行定时程序\n格式为每行一个时间，使用24h制")
         with open("schedule.txt", "w", encoding="utf-8") as f:
-            f.write("\n7:35\n11:55\n13:35\n17:35\n18:35\n23:35")
+            f.write("7:35\n11:55\n13:35\n17:35\n18:35\n23:35")
 
 if (__name__ == "__main__"):
     lng = 116.36239963107639

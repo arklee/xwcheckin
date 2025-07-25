@@ -1,3 +1,6 @@
 .venv
 logininfo.txt
 schedule.txt
+build
+dist
+xwcheckin.spec
