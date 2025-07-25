@@ -1,6 +1,8 @@
 import requests
 import os
 import platform
+import time
+from datetime import datetime
 
 def clear_screen():
     if platform.system() == "Windows":
@@ -147,13 +149,31 @@ def check_in(lng, lat, attendance_id):
     else:
         print("请先登录获取token")
 
+def run_background(lng, lat):
+    if os.path.exists("schedule.txt"):
+        with open("schedule.txt", "r", encoding="utf-8") as f:
+            target_times = [line.rstrip('\n') for line in f]
+            print("检测到schedule.txt，正在运行定时程序。程序每半分钟检测一次，请勿关闭窗口......")
+            while True:
+                now = datetime.now().strftime("%H:%M")
+                for t in target_times:
+                    if (now == t):
+                        attendance_id = get_attendence_info(lng, lat)
+                        check_in(lng, lat, attendance_id)
+                        time.sleep(60)
+                time.sleep(30)
+    else:
+        print("未找到schedule.txt，将生成默认时间表文件。请自行修改并重新运行定时程序\n格式为每行一个时间，使用24h制")
+        with open("schedule.txt", "w", encoding="utf-8") as f:
+            f.write("\n7:35\n11:55\n13:35\n17:35\n18:35\n23:35")
+
 if (__name__ == "__main__"):
     lng = 116.36239963107639
     lat = 39.891154513888885
     attendance_id = 0
 
     while True:
-        operation = input("1.登录\n2.获取签到信息\n3.签到\n0.退出\n请输入数字选择操作并回车: ")
+        operation = input("1.登录\n2.获取签到信息\n3.签到\n4.定时程序\n0.退出\n请输入数字选择操作并回车: ")
         if (operation == "1"):
             user = input("输入用户id：")
             passwd = input("输入用户密码：")
@@ -173,6 +193,8 @@ if (__name__ == "__main__"):
                 print("请先获取签到信息")
             else:
                 check_in(lng, lat, attendance_id)
+        elif (operation == "4"):
+            run_background(lng, lat)
         elif (operation == "0"):
             break
         else:
