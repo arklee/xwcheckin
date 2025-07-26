@@ -72,8 +72,8 @@ def get_attendence_info(lng, lat):
             url = "https://api.nobeliumbiz.com/student/check_in/list"
 
             params = {
-                "lng": str(lng),
-                "lat": str(lat),
+                "lng": lng,
+                "lat": lat,
                 "teaching_year_id": content[1]
             }
 
@@ -97,15 +97,13 @@ def get_attendence_info(lng, lat):
                 response = requests.get(url, headers=headers, params=params)
                 if (response.status_code == 200):
                     response_text = response.json()
-                    attendance_config_id = response_text["data"]["list"][0]["attendance_config_id"]
-                    attendance_config_name = response_text["data"]["list"][0]["attendance_config_name"]
-                    check_in_location = response_text["data"]["list"][0]["check_in_location"]
-                    print(f"定位成功，当前：\nattendance_config_id: {attendance_config_id}\n"+
-                          f"attendance_config_name: {attendance_config_name}\n"+
-                          f"check_in_location: {check_in_location}")
-                    return attendance_config_id
+                    for item in response_text["data"]["list"]:
+                        if ("宣武" in item["attendance_config_name"]):
+                            print("当前属于：" + item["attendance_config_name"])
+                            return item["attendance_config_id"]
                 else:
                     print(f"请求失败，状态码: {response.status_code}")
+                return 0
             except requests.exceptions.RequestException as e:
                 print(f"Request failed: {e}")
     else:
@@ -129,8 +127,8 @@ def check_in(lng, lat, attendance_id):
             }
 
             data = {
-                "lng": str(lng),
-                "lat": str(lat),
+                "lng": lng,
+                "lat": lat,
                 "attendance_config_id": attendance_id,
                 "teaching_year_id": content[1]
             }
@@ -194,18 +192,17 @@ def run_background(lng, lat):
             if not job_info["executed"] and now >= job_info["time"]:
                 print(f"\n到达预定时间 {job_info['time'].strftime('%H:%M:%S')} (原定 {t_str})，开始执行签到...")
                 attendance_id = get_attendence_info(lng, lat)
-                if attendance_id is not None:
+                if (attendance_id != 0):
                     check_in(lng, lat, attendance_id)
                 else:
-                    print("未能获取到签到信息，签到流程中止。")
+                    print("未能获取到包含宣武医院签到信息，签到流程中止。")
                 job_info["executed"] = True
         
         time.sleep(30) # 每30秒检查一次
 
 if (__name__ == "__main__"):
-    lng = 116.36239963107639
-    lat = 39.891154513888885
-    attendance_id = 0
+    lng = "116.36239963107639"
+    lat = "39.891154513888885"
 
     while True: 
         operation = input("1.登录\n2.执行手动签到\n3.定时程序\n0.退出\n请输入数字选择操作并回车: ")  
@@ -214,31 +211,13 @@ if (__name__ == "__main__"):
             passwd = input("输入用户密码：")  
             login(user, passwd)  
         elif (operation == "2"):  
-            # 合并了“获取签到信息”和“签到”的功能
-            print("开始执行手动签到流程...")  
-            # 应该没人会想改经纬度吧
-            # use_default_location = input("是否使用默认定位：\n1.是\n2.否\n请输入数字选择操作并回车:") 
-            # if (use_default_location == "1"):  
-            #     pass  
-            # elif (use_default_location == "2"):  
-            #     try:  
-            #         lng_input = input("请输入经度：")  
-            #         lat_input = input("请输入纬度：")  
-            #         # 更新经纬度  
-            #         lng = float(lng_input)  
-            #         lat = float(lat_input)  
-            #     except ValueError:  
-            #         print("输入无效，经纬度必须为数字。将使用上一次的有效坐标。")  
-            # else:  
-            #     print("请输入正确数字")  
-            
-            # 自动获取签到ID并执行签到  
+            print("开始执行手动签到流程...")   
             attendance_id = get_attendence_info(lng, lat)  
-            if attendance_id is not None:  
-                check_in(lng, lat, attendance_id)  
+            if (attendance_id != 0):  
+                check_in(lng, lat, attendance_id)
+                pass
             else:  
-                print("因未能获取到签到信息，签到流程中止。")  
-
+                print("未能获取到包含宣武医院签到信息，签到流程中止。") 
         elif (operation == "3"):  
             run_background(lng, lat)  
         elif (operation == "0"):  
