@@ -8,3 +8,5 @@ pip install requests
 ```
 python xwcheckin.py
 ```
+
+另外，可自动填写电子病历的程序见：https://github.com/ChristianAtheist/auto_fill_xw_case

@@ -52,7 +52,7 @@ def login(username, password):
                     year_id = response_data["data"]["user"]["year_id"]
                     print(f"登录成功，信息已存储\ntoken: {access_token}\nyear_id: {year_id}")
                     with open("logininfo.txt", "w", encoding="utf-8") as f:
-                        f.write(access_token+"\n"+str(year_id))
+                        f.write(access_token+"\n"+str(year_id)+"\n"+str(username)+"\n"+str(password))
                 else:
                     message = response_data["message"]
                     print(f"登录失败，错误代码：{code}\n报错信息：{message}")
@@ -66,48 +66,73 @@ def login(username, password):
 
 def get_attendence_info(lng, lat):
     
-    if os.path.exists("logininfo.txt"):
-        with open("logininfo.txt", "r", encoding="utf-8") as f:
-            content = f.readlines()
-            url = "https://api.nobeliumbiz.com/student/check_in/list"
+    if not os.path.exists("logininfo.txt"):  
+        print("请先登录获取token")  
+        return None  
 
-            params = {
-                "lng": lng,
-                "lat": lat,
-                "teaching_year_id": content[1]
-            }
+    with open("logininfo.txt", "r", encoding="utf-8") as f:  
+        content = [line.strip() for line in f.readlines()]  
+    
+    # 确保文件中有足够的信息  
+    if len(content) < 4:  
+        print("logininfo.txt 文件不完整，缺少用户名或密码信息，请重新登录。")  
+        return None  
 
-            headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "X-Hospital": "xuanwu",
-                "Authorization": "Bearer " + content[0].rstrip(),
-                "Charset": "utf-8",
-                "Referer": "https://servicewechat.com/wxe0d6a3f51d535e25/20/page-frame.html",
-                "User-Agent": (
-                    "Mozilla/5.0 (Linux; Android 12; SM-F926U Build/V417IR; wv) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 "
-                    "Chrome/101.0.4951.61 Safari/537.36 MMWEBID/2183 "
-                    "MicroMessenger/8.0.61.2880(0x28003D34) "
-                    "WeChat/arm64 Weixin NetType/WIFI Language/en ABI/arm64 MiniProgramEnv/android"
-                ),
-                "Accept-Encoding": "gzip, deflate, br"
-            }
-            try:
-                response = requests.get(url, headers=headers, params=params)
-                if (response.status_code == 200):
-                    response_text = response.json()
-                    for item in response_text["data"]["list"]:
-                        if ("宣武" in item["attendance_config_name"]):
-                            print("当前属于：" + item["attendance_config_name"])
-                            return item["attendance_config_id"]
-                else:
-                    print(f"请求失败，状态码: {response.status_code}")
-                return 0
-            except requests.exceptions.RequestException as e:
-                print(f"Request failed: {e}")
-    else:
-        print("请先登录获取token")
+    access_token, year_id, username, password = content  
+    
+    url = "https://api.nobeliumbiz.com/student/check_in/list"  
+    params = {  
+        "lng": lng,  
+        "lat": lat,  
+        "teaching_year_id": year_id  
+    }  
+    headers = {  
+        "Accept": "application/json",  
+        "Content-Type": "application/json",  
+        "X-Hospital": "xuanwu",  
+        "Authorization": "Bearer " + access_token,  
+        "Charset": "utf-8",  
+        "Referer": "https://servicewechat.com/wxe0d6a3f51d535e25/20/page-frame.html",  
+        "User-Agent": (  
+            "Mozilla/5.0 (Linux; Android 12; SM-F926U Build/V417IR; wv) "  
+            "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 "  
+            "Chrome/101.0.4951.61 Safari/537.36 MMWEBID/2183 "  
+            "MicroMessenger/8.0.61.2880(0x28003D34) "  
+            "WeChat/arm64 Weixin NetType/WIFI Language/en ABI/arm64 MiniProgramEnv/android"  
+        ),  
+        "Accept-Encoding": "gzip, deflate, br"  
+    }  
+
+    try:  
+        response = requests.get(url, headers=headers, params=params)  
+        
+        if response.status_code == 200:  
+            response_data = response.json()  
+            if response_data.get("code") == 0:  
+                for item in response_data.get("data", {}).get("list", []):  
+                    if "宣武" in item.get("attendance_config_name", ""):  
+                        print("当前属于：" + item["attendance_config_name"])  
+                        return item["attendance_config_id"]  
+            
+            # token失效则重新登录
+            print(f"获取签到信息失败: {response_data.get('message')}")   
+            if "请先登录" in response_data.get('message', ''):  
+                print("Token 已失效，尝试重新登录以更新 Token")  
+                login(username, password) 
+                print("再次尝试获取签到信息")  
+                return get_attendence_info(lng, lat)   
+            return None 
+
+        else:  
+            print(f"请求失败，状态码: {response.status_code}")  
+            return None  
+
+    except requests.exceptions.RequestException as e:  
+        print(f"Request failed: {e}")  
+        return None  
+    except KeyError:  
+        print("获取签到信息失败：响应数据格式不正确。")  
+        return None  
 
 def check_in(lng, lat, attendance_id):
     if os.path.exists("logininfo.txt"):
